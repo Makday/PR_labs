@@ -17,7 +17,7 @@ public class Main {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
 
       for (int i = 0; i < count; i++) {
-        int number = random.nextInt(max - min + 1) + min;
+        int number = random.nextInt(min, max);
 
         writer.write(Integer.toString(number));
         writer.newLine();
