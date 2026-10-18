@@ -8,25 +8,23 @@ import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import org.example.lab1.SignCounts;
+
 public class Task1c implements Task {
   private static final int BATCH_SIZE = 10_000;
   private static final int NUMBER_BATCHES = 100;
-  private static final int MAX_WORKERS = 64;
   private static final List<String> POISON = new ArrayList<>();
 
   private final Path file;
+  private final int workerCount;
 
-  public Task1c(Path file) {
+  public Task1c(Path file, int workerCount) {
     this.file = file;
+    this.workerCount = workerCount;
   }
 
-  public void run() {
-    for (int i = 1; i <= MAX_WORKERS; i *= 2) {
-      runWithWorkers(i);
-    }
-  }
-
-  private void runWithWorkers(int workerCount) {
+  @Override
+  public SignCounts run() throws Exception {
     BlockingQueue<List<String>> queue = new ArrayBlockingQueue<>(NUMBER_BATCHES);
 
     Thread reader = new Thread(new Reader(queue, workerCount));
@@ -35,8 +33,6 @@ public class Task1c implements Task {
     for (int i = 0; i < workerCount; i++) {
       workers.add(new Worker(queue));
     }
-
-    long start = System.nanoTime();
 
     workers.forEach(Thread::start);
     reader.start();
@@ -47,16 +43,15 @@ public class Task1c implements Task {
         w.join();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return;
+      throw e;
     }
 
-    int total = 0;
+    SignCounts total = new SignCounts(0, 0, 0);
     for (Worker w : workers) {
-      total += w.getCount();
+      total = total.plus(w.getCount());
     }
 
-    long ms = (System.nanoTime() - start) / 1_000_000;
-    System.out.println("workers=" + workerCount + " count=" + total + " time=" + ms + " ms");
+    return total;
   }
 
   private class Reader implements Runnable {
@@ -92,18 +87,21 @@ public class Task1c implements Task {
 
   private class Worker extends Thread {
     private final BlockingQueue<List<String>> queue;
-    private int count;
+    private SignCounts signcounts;
 
     Worker(BlockingQueue<List<String>> queue) {
       this.queue = queue;
+      this.signcounts = new SignCounts(0, 0, 0);
     }
 
-    int getCount() {
-      return count;
+    public SignCounts getCount() {
+      return signcounts;
     }
 
     public void run() {
-      int local = 0;
+      long negative = 0;
+      long positive = 0;
+      long zero = 0;
       try {
         while (true) {
           List<String> batch = queue.take();
@@ -112,14 +110,19 @@ public class Task1c implements Task {
           for (String line : batch) {
             if (line.isBlank())
               continue;
-            Integer.parseInt(line.trim());
-            local++;
+            int value = Integer.parseInt(line.trim());
+            if (value < 0)
+              negative++;
+            else if (value > 0)
+              positive++;
+            else
+              zero++;
           }
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      count = local;
+      signcounts = new SignCounts(negative, positive, zero);
     }
   }
 }
