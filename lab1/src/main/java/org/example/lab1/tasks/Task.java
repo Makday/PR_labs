@@ -1,5 +1,13 @@
 package org.example.lab1.tasks;
 
+import org.example.lab1.SignCounts;
+
 public interface Task {
-  public void run();
+  default void prepare() throws Exception {
+  }
+
+  SignCounts run() throws Exception;
+
+  default void cleanup() {
+  }
 }
