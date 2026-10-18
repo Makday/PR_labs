@@ -1,5 +1,11 @@
 package org.example.lab1.tasks;
 
 public interface Task {
-  public void run();
+  default void prepare() throws Exception {
+  }
+
+  SignCounts run() throws Exception;
+
+  default void cleanup() {
+  }
 }
