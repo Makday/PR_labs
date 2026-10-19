@@ -1,4 +1,4 @@
-package org.example.lab1;
+package org.example.lab1.tasks;
 
 public record SignCounts(long negative, long positive, long zero) {
   public SignCounts plus(SignCounts o) {

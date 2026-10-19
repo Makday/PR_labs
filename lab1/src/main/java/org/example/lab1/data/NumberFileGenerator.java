@@ -1,4 +1,4 @@
-package org.example.lab1;
+package org.example.lab1.data;
 
 import java.io.BufferedWriter;
 import java.io.IOException;

@@ -8,8 +8,6 @@ import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import org.example.lab1.SignCounts;
-
 public class Task1c implements Task {
   private static final int BATCH_SIZE = 10_000;
   private static final int NUMBER_BATCHES = 100;

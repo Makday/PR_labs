@@ -1,10 +1,12 @@
-package org.example.lab1;
+package org.example.lab1.profiling;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+
+import org.example.lab1.tasks.SignCounts;
 
 public final class ResultWriter {
   private static final String HEADER = "task,threads,time_ms,peak_rss_kb,negative,positive,zero,total,timestamp";

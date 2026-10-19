@@ -1,4 +1,4 @@
-package org.example.lab1;
+package org.example.lab1.profiling;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
