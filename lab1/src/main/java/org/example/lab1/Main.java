@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
 
+import org.example.lab1.data.FileSplitter;
 import org.example.lab1.data.NumberFileGenerator;
 import org.example.lab1.profiling.ResultWriter;
 import org.example.lab1.profiling.RunResult;
@@ -23,6 +24,7 @@ public class Main {
   private static final Map<String, BiFunction<Path, Integer, Task>> REGISTRY = Map.of("1c", Task1c::new);
   private static final Set<String> RUN_FLAGS = Set.of("task", "threads", "input", "output");
   private static final Set<String> GENERATE_FLAGS = Set.of("output", "count");
+  private static final Set<String> SPLIT_FLAGS = Set.of("input", "output");
 
   public static void main(String[] args) {
     try {
@@ -35,6 +37,7 @@ public class Main {
       switch (mode) {
         case "run" -> runTask(parseFlags(rest, RUN_FLAGS));
         case "generate" -> generate(parseFlags(rest, GENERATE_FLAGS));
+        case "split" -> split(parseFlags(rest, SPLIT_FLAGS));
         default -> throw new IllegalArgumentException("Unknown mode '" + mode + "'");
       }
 
@@ -84,6 +87,18 @@ public class Main {
     System.out.println(ResultWriter.toRow(result));
   }
 
+  private static void generate(Map<String, String> flags) throws IOException {
+    Path out = Path.of(flags.getOrDefault("output", DEFAULT_NUMBER_FILE));
+    int count = Integer.parseInt(flags.getOrDefault("count", "50000000"));
+    new NumberFileGenerator(count, -1_000_000, 1_000_000).generate(out);
+  }
+
+  private static void split(Map<String, String> flags) throws IOException {
+    Path input = Path.of(flags.getOrDefault("input", DEFAULT_NUMBER_FILE));
+    Path outDir = Path.of(flags.getOrDefault("output", "parts"));
+    FileSplitter.split(input, outDir);
+  }
+
   private static int parsePositiveInt(String text, String name) {
     int value;
     try {
@@ -95,12 +110,6 @@ public class Main {
       throw new IllegalArgumentException("--" + name + " must be >= 1, got: " + value);
     }
     return value;
-  }
-
-  private static void generate(Map<String, String> flags) throws IOException {
-    Path out = Path.of(flags.getOrDefault("output", DEFAULT_NUMBER_FILE));
-    int count = Integer.parseInt(flags.getOrDefault("count", "50000000"));
-    new NumberFileGenerator(count, -1_000_000, 1_000_000).generate(out);
   }
 
   private static String require(Map<String, String> flags, String key) {
