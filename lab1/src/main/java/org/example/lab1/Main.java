@@ -16,6 +16,9 @@ import org.example.lab1.profiling.RunResult;
 import org.example.lab1.profiling.Runner;
 import org.example.lab1.tasks.Task;
 import org.example.lab1.tasks.Task1a;
+import org.example.lab1.tasks.task1b.Task1bUnsynchronized;
+import org.example.lab1.tasks.task1b.Task1bLocked;
+import org.example.lab1.tasks.task1b.Task1bLocal;
 import org.example.lab1.tasks.Task1c;
 import org.example.lab1.tasks.Task2;
 
@@ -24,9 +27,12 @@ public class Main {
   private static final String DEFAULT_RESULT_FILE = "results.csv";
 
   private static final Map<String, BiFunction<Path, Integer, Task>> REGISTRY = Map.of(
-      "1a", Task1a::new,
-      "1c", Task1c::new,
-      "2", Task2::new);
+          "1a", Task1a::new,
+          "1b_unsync", Task1bUnsynchronized::new,
+          "1b_locked", Task1bLocked::new,
+          "1b_local", Task1bLocal::new,
+          "1c", Task1c::new,
+          "2", Task2::new);
   private static final Set<String> RUN_FLAGS = Set.of("task", "threads", "input", "output");
   private static final Set<String> GENERATE_FLAGS = Set.of("output", "count");
   private static final Set<String> SPLIT_FLAGS = Set.of("input", "output");
