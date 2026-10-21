@@ -23,3 +23,10 @@ for task in 1a 1c; do
     done
   done
 done
+
+for task in 1b_unsync 1b_locked 1b_local; do
+  run run --task "$task" --threads "$MAX_PROCESSORS" --output /dev/null
+  for ((i = 1; i <= RUNS; i++)); do
+    run run --task "$task" --threads "$MAX_PROCESSORS" --output "$OUT"
+  done
+done
