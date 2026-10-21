@@ -1,0 +1,21 @@
+=== CPU ===
+Model name: Intel(R) Core(TM) i5-10300H CPU @ 2.50GHz
+Physical cores: 4
+Logical processors: 8
+
+=== RAM ===
+32 GB
+
+=== Disks (ROTA 0 = SSD, 1 = HDD) ===
+NAME    MODEL                        SIZE ROTA TRAN TYPE
+nvme1n1 SPCC M.2 PCIe SSD            1.8T    0 nvme disk
+
+=== USB devices and speeds ===
+USB drive: Silicon Motion Flash Drive (090c:1000), USB 2.0 (480 Mbit/s)
+
+=== OS ===
+PRETTY_NAME="CachyOS"
+7.2.11-1-cachyos
+
+=== Language / runtime versions ===
+openjdk version "25.0.4.1" 2026-08-18
