@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-JAVA_FLAGS="-Xmx512m -Xmx512m"
+JAVA_FLAGS="-Xmx512m"
 CP="target/classes/"
 RUNS="3"
 THREADS="1 2 4 8 16 32 64"
