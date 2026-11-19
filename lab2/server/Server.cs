@@ -90,26 +90,21 @@ public class Server
     private void HandleOrder(ClientConnection conn, string[] tokens)
     {
         if (!OrderParser.TryParse(tokens, out var items, out var error))
-        {
-            Log.Info(conn.Endpoint, $"order rejected: {error}");
-            conn.Send("ERR " + error);
-            return;
-        }
+            { Reject(conn, error); return; }
 
-        if (!_stock.TryTake(items, out var shortages))
-        {
-            string msg = "NOT_ENOUGH " + Format(shortages);
-            Log.Info(conn.Endpoint, $"order refused: {msg}");
-            conn.Send("ERR " + msg);
-            return;
-        }
+        if (!stock.TryTake(items, out var shortages))
+            { Reject(conn, "NOT_ENOUGH " + Format(shortages)); return; }
 
-        int id = Interlocked.Increment(ref _nextOrderId);
-        var order = new Order(id, items, conn);
+        var order = new Order(Interlocked.Increment(ref _nextOrderId), items, conn);
+        Log.Info(conn.Endpoint, $"order {order.Id} accepted: {Format(items)} ({order.PrepSeconds}s)");
+        conn.Send($"OK ORDER {order.Id} {order.PrepSeconds}");
+        kitchen.Enqueue(order);
+    }
 
-        Log.Info(conn.Endpoint, $"order {id} accepted: {Format(items)} ({order.PrepSeconds}s)");
-        conn.Send($"OK ORDER {id} {order.PrepSeconds}");
-        _kitchen.Enqueue(order);
+    private static void Reject(ClientConnection conn, string error)
+    {
+        Log.Info(conn.Endpoint, $"rejected: {error}");
+        conn.Send("ERR " + error);
     }
 
     private static string Format(IEnumerable<KeyValuePair<string, int>> d)
