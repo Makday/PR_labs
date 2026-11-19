@@ -1,5 +1,3 @@
-using Products;
-
 namespace CoffeeShop;
 
 public static class Menu

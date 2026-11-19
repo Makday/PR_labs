@@ -37,6 +37,7 @@ public class Server
             catch (Exception ex)
             {
                 Log.Error($"accept failed ({ex.GetType().Name}: {ex.Message})");
+                Thread.Sleep(100);
             }
         }
     }
@@ -81,8 +82,7 @@ public class Server
                 break;
 
             default:
-                Log.Info(conn.Endpoint, $"rejected: UNKNOWN_COMMAND {parts[0]}");
-                conn.Send($"ERR UNKNOWN_COMMAND {parts[0]}");
+                Reject(conn, $"UNKNOWN_COMMAND {parts[0]}");
                 break;
         }
     }
@@ -90,15 +90,21 @@ public class Server
     private void HandleOrder(ClientConnection conn, string[] tokens)
     {
         if (!OrderParser.TryParse(tokens, out var items, out var error))
-            { Reject(conn, error); return; }
+        {
+            Reject(conn, error);
+            return;
+        }
 
-        if (!stock.TryTake(items, out var shortages))
-            { Reject(conn, "NOT_ENOUGH " + Format(shortages)); return; }
+        if (!_stock.TryTake(items, out var shortages))
+        {
+            Reject(conn, "NOT_ENOUGH " + Format(shortages));
+            return;
+        }
 
         var order = new Order(Interlocked.Increment(ref _nextOrderId), items, conn);
         Log.Info(conn.Endpoint, $"order {order.Id} accepted: {Format(items)} ({order.PrepSeconds}s)");
         conn.Send($"OK ORDER {order.Id} {order.PrepSeconds}");
-        kitchen.Enqueue(order);
+        _kitchen.Enqueue(order);
     }
 
     private static void Reject(ClientConnection conn, string error)

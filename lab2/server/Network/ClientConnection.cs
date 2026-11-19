@@ -1,3 +1,6 @@
+using System.Net.Sockets;
+using System.Text;
+
 public class ClientConnection
 {
     private const int MaxLine = 4096;
