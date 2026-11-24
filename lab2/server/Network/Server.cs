@@ -17,7 +17,7 @@ public class Server
         _kitchen = kitchen;
     }
 
-    public void Run()
+    public async Task RunAsync() 
     {
         var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
@@ -29,25 +29,25 @@ public class Server
         {
             try
             {
-                Socket socket = listener.Accept();
+                Socket socket = await listener.AcceptAsync();
                 var conn = new ClientConnection(socket);
                 Log.Info(conn.Endpoint, "connected");
-                new Thread(() => HandleClient(conn)) { IsBackground = true }.Start();
+                _ = HandleClientAsync(conn);  
             }
             catch (Exception ex)
             {
                 Log.Error($"accept failed ({ex.GetType().Name}: {ex.Message})");
-                Thread.Sleep(100);
+                await Task.Delay(100);  
             }
         }
     }
 
-    private void HandleClient(ClientConnection conn)
+    private async Task HandleClientAsync(ClientConnection conn)
     {
         try
         {
             string? line;
-            while ((line = conn.ReadLine()) != null)
+            while ((line = await conn.ReadLineAsync()) != null) 
                 Dispatch(conn, line);
 
             Log.Info(conn.Endpoint, "disconnected");

@@ -18,7 +18,7 @@ public class ClientConnection
         Endpoint = socket.RemoteEndPoint?.ToString() ?? "unknown";
     }
 
-    public string? ReadLine()
+    public async Task<string?> ReadLineAsync() 
     {
         while (true)
         {
@@ -31,7 +31,7 @@ public class ClientConnection
             }
             if (_pending.Count > MaxLine) throw new InvalidDataException("line too long");
 
-            int n = _socket.Receive(_chunk);
+            int n = await _socket.ReceiveAsync(_chunk.AsMemory(), SocketFlags.None);
             if (n == 0) return null;
             _pending.AddRange(_chunk.AsSpan(0, n));
         }

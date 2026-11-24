@@ -12,5 +12,5 @@ Log.Info($"initial stock: {string.Join(" ", stock.Snapshot().Select(kv => $"{kv.
 var kitchen = new Kitchen();
 kitchen.Start();
 
-new Server(port, stock, kitchen).Run();
+await new Server(port, stock, kitchen).RunAsync();
 return 0;
