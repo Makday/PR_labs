@@ -48,9 +48,14 @@ public class Server
     {
         try
         {
-            string? line;
-            while ((line = await conn.ReadLineAsync()) != null) 
+            while (true)
+            {
+                string? line;
+                try { line = await conn.ReadLineAsync(); }
+                catch (LineTooLongException) { Reject(conn, "MESSAGE_TOO_LONG"); continue; }
+                if (line == null) break;
                 Dispatch(conn, line);
+            }
 
             Log.Info(conn.Endpoint, "disconnected");
         }
@@ -60,6 +65,7 @@ public class Server
         }
         finally
         {
+            _kitchen.CancelAll(conn);                        // its orders are cancelled, products go back
             lock (_providerLock)
                 if (_provider == conn) _provider = null;     // the shop goes on without a provider
             conn.Close();
@@ -70,6 +76,14 @@ public class Server
     {
         var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0) return;
+
+        bool isProvider;
+        lock (_providerLock) isProvider = _provider == conn;
+        if (isProvider && !parts[0].Equals("DELIVER", StringComparison.OrdinalIgnoreCase))
+        {
+            Reject(conn, "PROVIDER_CAN_ONLY_DELIVER");
+            return;
+        }
 
         switch (parts[0].ToUpperInvariant())
         {
@@ -99,18 +113,21 @@ public class Server
     {
         if (!OrderParser.TryParse(tokens, out var items, out var error))
         {
+            Log.Info(conn.Endpoint, $"order refused: {error}");
             Reject(conn, error);
             return;
         }
 
         if (!_stock.TryTake(items, out var shortages, out var low))
         {
+            Log.Info(conn.Endpoint, $"order refused: not enough {Format(shortages)}");
             Reject(conn, "NOT_ENOUGH " + Format(shortages));
             return;
         }
 
         var order = new Order(Interlocked.Increment(ref _nextOrderId), items, conn);
         Log.Info(conn.Endpoint, $"order {order.Id} accepted: {Format(items)} ({order.PrepSeconds}s)");
+        _kitchen.Track(order);                               // from now on a failure cancels it and returns the products
         conn.Send($"OK ORDER {order.Id} {order.PrepSeconds}");
         _kitchen.Enqueue(order);
 
@@ -191,6 +208,9 @@ public class Server
 
     private static void Reject(ClientConnection conn, string error)
     {
+        // the text may echo garbage from the client: no control characters, bounded length
+        error = new string(error.Select(c => char.IsControl(c) ? '?' : c).ToArray());
+        if (error.Length > 200) error = error[..200];
         Log.Info(conn.Endpoint, $"rejected: {error}");
         conn.Send("ERR " + error);
     }
