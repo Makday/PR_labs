@@ -5,6 +5,8 @@ public class Stock
     private readonly Dictionary<string, int> _items = new();
     private readonly object _lock = new();
 
+    public const int LowLevel = 5;      // a product below this level triggers an alert
+
     public Stock()
     {
         foreach (var p in Menu.All)
@@ -17,11 +19,14 @@ public class Stock
             return new Dictionary<string, int>(_items);
     }
 
-    public bool TryTake(IReadOnlyDictionary<string, int> wanted, out Dictionary<string, int> shortages)
+    // low: products that this take pushed from LowLevel or more to below LowLevel (only filled on success)
+    public bool TryTake(IReadOnlyDictionary<string, int> wanted, out Dictionary<string, int> shortages,
+                        out Dictionary<string, int> low)
     {
         lock (_lock)
         {
             shortages = new Dictionary<string, int>();
+            low = new Dictionary<string, int>();
 
             foreach (var (name, qty) in wanted)
             {
@@ -32,9 +37,20 @@ public class Stock
             if (shortages.Count > 0) return false;
 
             foreach (var (name, qty) in wanted)
-                _items[name] -= qty;
+            {
+                int before = _items[name];
+                _items[name] = before - qty;
+                if (before >= LowLevel && before - qty < LowLevel) low[name] = before - qty;
+            }
 
             return true;
         }
+    }
+
+    public void Add(IReadOnlyDictionary<string, int> items)
+    {
+        lock (_lock)
+            foreach (var (name, qty) in items)
+                _items[name] += qty;
     }
 }

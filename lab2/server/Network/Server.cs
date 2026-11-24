@@ -9,6 +9,8 @@ public class Server
     private readonly Stock _stock;
     private readonly Kitchen _kitchen;
     private int _nextOrderId;
+    private ClientConnection? _provider;                    // the one provider connection, or null
+    private readonly object _providerLock = new();
 
     public Server(int port, Stock stock, Kitchen kitchen)
     {
@@ -58,6 +60,8 @@ public class Server
         }
         finally
         {
+            lock (_providerLock)
+                if (_provider == conn) _provider = null;     // the shop goes on without a provider
             conn.Close();
         }
     }
@@ -70,7 +74,7 @@ public class Server
         switch (parts[0].ToUpperInvariant())
         {
             case "HELLO":
-                conn.Send("OK HELLO");
+                HandleHello(conn, parts);
                 break;
 
             case "MENU":
@@ -79,6 +83,10 @@ public class Server
 
             case "ORDER":
                 HandleOrder(conn, parts[1..]);
+                break;
+
+            case "DELIVER":
+                HandleDeliver(conn, parts[1..]);
                 break;
 
             default:
@@ -95,7 +103,7 @@ public class Server
             return;
         }
 
-        if (!_stock.TryTake(items, out var shortages))
+        if (!_stock.TryTake(items, out var shortages, out var low))
         {
             Reject(conn, "NOT_ENOUGH " + Format(shortages));
             return;
@@ -105,6 +113,80 @@ public class Server
         Log.Info(conn.Endpoint, $"order {order.Id} accepted: {Format(items)} ({order.PrepSeconds}s)");
         conn.Send($"OK ORDER {order.Id} {order.PrepSeconds}");
         _kitchen.Enqueue(order);
+
+        if (low.Count > 0) AlertProvider(low);
+    }
+
+    private void HandleHello(ClientConnection conn, string[] parts)
+    {
+        string role = parts.Length > 1 ? parts[1].ToLowerInvariant() : "";
+
+        if (role == "client")
+        {
+            conn.Send("OK HELLO");
+        }
+        else if (role == "provider")
+        {
+            bool accepted;
+            lock (_providerLock)
+            {
+                accepted = _provider == null || _provider == conn;
+                if (accepted) _provider = conn;
+            }
+            if (!accepted) { Reject(conn, "PROVIDER_EXISTS"); return; }
+
+            Log.Info(conn.Endpoint, "registered as provider");
+            conn.Send("OK HELLO");
+
+            // alerts that came while no provider was connected
+            var low = _stock.Snapshot().Where(kv => kv.Value < Stock.LowLevel)
+                                       .ToDictionary(kv => kv.Key, kv => kv.Value);
+            if (low.Count > 0) AlertProvider(low);
+        }
+        else
+        {
+            Reject(conn, $"BAD_ROLE {role}");
+        }
+    }
+
+    private void HandleDeliver(ClientConnection conn, string[] tokens)
+    {
+        bool isProvider;
+        lock (_providerLock) isProvider = _provider == conn;
+        if (!isProvider) { Reject(conn, "NOT_PROVIDER"); return; }
+
+        if (!OrderParser.TryParse(tokens, out var items, out var error))
+        {
+            Reject(conn, error);
+            return;
+        }
+
+        _stock.Add(items);
+        Log.Info(conn.Endpoint, $"delivery: {Format(items)}");
+        conn.Send("OK DELIVER");
+    }
+
+    // Never throws: a broken provider must not break the client whose order triggered the alert.
+    private void AlertProvider(IReadOnlyDictionary<string, int> low)
+    {
+        ClientConnection? provider;
+        lock (_providerLock) provider = _provider;
+
+        if (provider == null)
+        {
+            Log.Info($"low stock, no provider connected: {Format(low)}");
+            return;
+        }
+
+        try
+        {
+            provider.Send("EVENT LOW_STOCK " + Format(low));
+            Log.Info(provider.Endpoint, $"low stock alert sent: {Format(low)}");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(provider.Endpoint, $"could not alert provider ({ex.GetType().Name}: {ex.Message})");
+        }
     }
 
     private static void Reject(ClientConnection conn, string error)
