@@ -63,7 +63,7 @@ public class CoffeeClient {
         receiver.start();
 
         try {
-            send(provider ? "HELLO PROVIDER" : "HELLO");
+            send(provider ? "HELLO PROVIDER" : "HELLO client");
         } catch (IOException e) {
             serverGone("send failed: " + e.getMessage());
             return;
