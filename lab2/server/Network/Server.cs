@@ -91,6 +91,10 @@ public class Server
                 HandleHello(conn, parts);
                 break;
 
+            case "CANCEL":
+                _kitchen.CancelAll(conn);
+                break;
+
             case "MENU":
                 conn.Send("OK MENU " + Format(_stock.Snapshot()));
                 break;
